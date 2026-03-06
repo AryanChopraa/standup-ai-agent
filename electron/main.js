@@ -127,14 +127,7 @@ async function openMeet(config) {
     // Start recording now so we capture the whole meeting
     startRecording(AUDIO_PATH);
 
-    // Wait for UI button or chat trigger to deliver standup
-    await new Promise((resolve) => {
-      ipcMain.once('deliver-now', resolve);
-      ipcMain.once('ghost-deliver', resolve);
-    });
-    if (cancelled) return;
-
-    // Register Q&A and leave handlers BEFORE delivery so no messages are missed
+    // Register handlers immediately so pre-delivery queries are answered too
     const queryHandler = async (event, question) => {
       if (!meetWindow || meetWindow.isDestroyed()) return;
       log(`[Q&A] Received query: "${question}"`);
@@ -168,6 +161,13 @@ async function openMeet(config) {
     };
     ipcMain.on('ghost-query', queryHandler);
     const leavePromise = new Promise((resolve) => ipcMain.once('ghost-leave', resolve));
+
+    // Wait for UI button or chat trigger to deliver standup
+    await new Promise((resolve) => {
+      ipcMain.once('deliver-now', resolve);
+      ipcMain.once('ghost-deliver', resolve);
+    });
+    if (cancelled) return;
 
     await deliverStandup();
     log('Staying in call for Q&A. Waiting for "aryan you can leave" in chat...');
